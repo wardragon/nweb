@@ -100,7 +100,7 @@ void web(int fd, int hit)
 
   /* work out the file type and check we support it */
   buflen=strlen(buffer);
-  fstr = (char *)0;
+  fstr = (char *)"application/octet-stream";
   for(i=0;extensions[i].ext != 0;i++) {
     len = strlen(extensions[i].ext);
     if( !strncmp(&buffer[buflen-len], extensions[i].ext, len)) {
@@ -109,7 +109,7 @@ void web(int fd, int hit)
     }
   }
   if(fstr == 0) logger(FORBIDDEN,"file extension type not supported",buffer,fd);
-
+ 
   if(( file_fd = open(&buffer[5],O_RDONLY)) == -1) {  /* open the file for reading */
     logger(NOTFOUND, "failed to open file",&buffer[5],fd);
   }
