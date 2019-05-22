@@ -64,11 +64,10 @@ void logger(int type, char *s1, char *s2, int socket_fd)
 }
 
 /* this is a child web server process, so we can exit on errors */
-void web(int fd, int hit)
+void web(int fd, int hit, char *fstr)
 {
   int j, file_fd, buflen;
   long i, ret, len;
-  char * fstr;
   static char buffer[BUFSIZE+1]; /* static so zero filled */
 
   ret =read(fd,buffer,BUFSIZE);   /* read Web request in one go */
@@ -100,7 +99,6 @@ void web(int fd, int hit)
 
   /* work out the file type and check we support it */
   buflen=strlen(buffer);
-  fstr = (char *)"application/octet-stream";
   for(i=0;extensions[i].ext != 0;i++) {
     len = strlen(extensions[i].ext);
     if( !strncmp(&buffer[buflen-len], extensions[i].ext, len)) {
@@ -132,17 +130,18 @@ void web(int fd, int hit)
 int main(int argc, char **argv)
 {
   int i, port, pid, listenfd, socketfd, hit;
+  char *content=(char *)0;
   socklen_t length;
   static struct sockaddr_in cli_addr; /* static = initialised to zeros */
   static struct sockaddr_in serv_addr; /* static = initialised to zeros */
 
-  if( argc < 3  || argc > 3 || !strcmp(argv[1], "-?") ) {
+  if( argc < 3  || argc > 4 || !strcmp(argv[1], "-?") ) {
     (void)printf("hint: nweb Port-Number Top-Directory\t\tversion %d\n\n"
   "\tnweb is a small and very safe mini web server\n"
   "\tnweb only servers out file/web pages with extensions named below\n"
   "\t and only from the named directory or its sub-directories.\n"
   "\tThere is no fancy features = safe and secure.\n\n"
-  "\tExample: nweb 8181 /home/nwebdir &\n\n"
+  "\tExample: nweb 8181 /home/nwebdir ['octect/stream'] &\n\n"
   "\tOnly Supports:", VERSION);
     for(i=0;extensions[i].ext != 0;i++)
       (void)printf(" %s",extensions[i].ext);
@@ -176,6 +175,8 @@ int main(int argc, char **argv)
   if((listenfd = socket(AF_INET, SOCK_STREAM,0)) <0)
     logger(ERROR, "system call","socket",0);
   port = atoi(argv[1]);
+  //added support for unknown content-type
+  content=(char *)argv[3];
   if(port < 0 || port >60000)
     logger(ERROR,"Invalid port number (try 1->60000)",argv[1],0);
   serv_addr.sin_family = AF_INET;
@@ -195,7 +196,7 @@ int main(int argc, char **argv)
     else {
       if(pid == 0) {   /* child */
         (void)close(listenfd);
-        web(socketfd,hit); /* never returns */
+        web(socketfd, hit, content); /* never returns */
       } else {   /* parent */
         (void)close(socketfd);
       }
